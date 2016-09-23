@@ -67,8 +67,9 @@ nmods = size(models,1);
 
 % Prepare outputs
 epsilon = NaN(nmods,nmods,numel(Data));
-bestp   = NaN(nmods,nmods,numel(Data));
-R2      = cell(nmods,nmods);
+bestp = NaN(nmods,nmods,numel(Data));
+R2within = NaN(nmods,nmods,numel(Data));
+R2generalized = NaN(nmods,nmods,numel(Data));
 
 % Loop over models
 for m = 1:nmods
@@ -125,6 +126,7 @@ for m = 1:nmods
             np = numel(params);
 
             % Loop over parameters
+            R2   = NaN(1,np);
             MSE  = NaN(1,np);
             beta = NaN(2,np);
             for p = 1:np
@@ -149,7 +151,7 @@ for m = 1:nmods
                 
                 % Try to fit that
                 warning('off');
-                [MSE(p), ~, R2{m,mm}(j,p), ~, ~, ~, beta(:,p), ~] = Squires1976_FitModel(pred, loo);
+                [MSE(p), ~, R2(p), ~, ~, ~, beta(:,p)] = Squires1976_FitModel(pred, loo);
                 warning('on');
             end
             
@@ -168,99 +170,56 @@ for m = 1:nmods
             % Get the prediction for the observation that was left out and
             % measure its distance to the data
             epsilon(m,mm,j) = Data(j) - pred(j);
+            
+            % Measure the variance explained between the current model
+            % predictions (with its based parameter based on the loo fit)
+            % and the predictions of the models on which the loo loop is
+            % looping on
+            R2within(m,mm,j) = R2(bpi);
+            
+            % Measure the variance explained between the current model
+            % predictions (with its based parameter based on the loo fit)
+            % and the Squires' data
+            [~, ~, R2generalized(m,mm,j), ~, ~, ~, ~, ~] = Squires1976_FitModel(pred, Data);
         end
     end
     fprintf('\n');
 end
 
-%% AVERAGE OVER LEAVE-ONE OUT
-%  ==========================
-
-% Get the list of tested models
-models = cellfun(@(x,y) sprintf('%s, %s', x, y), models(:,1), models(:,2), 'UniformOutput', false);
-
-% Compute the distance between best and true parameters
-truth = B.Best.Param';
-truth = truth(:);
-distratio = (repmat(truth, [1,nmods,n]) - bestp) ./ repmat(truth, [1,nmods,n]);
-distratioavg = mean(distratio,3);
-
-% Average best parameters over LOO
-BPavg = mean(bestp,3);
-BPstd = std(bestp,[],3);
-
-% Average R2 over LOO
-R2avg = cellfun(@(x) mean(max(x,[],2),1), R2, 'UniformOutput', true);
-R2std = cellfun(@(x) std(max(x,[],2),[],1), R2, 'UniformOutput', true);
-
-%% PLOT THE ERROR ON PARAMETERS
-%  ============================
-
-figure('Position', [0.2115 0.3183 0.5776 0.3250]);
-
-subplot(1,2,1);
-imagesc(zeros(size(distratioavg)));
-
-for m = 1:nmods
-    for mm = 1:nmods
-        text(m, mm, sprintf('%2i%%', distratioavg(mm,m)*100));
-    end
-end
-
-axis('square'); 
-set(gca, 'XTick', 1:nmods, 'XTickLabel', models, ...
-         'YTick', 1:nmods, 'YTickLabel', models, ...
-         'XTickLabelRotation', 45, 'XAxisLocation', 'Top');
-xlabel('...to...'); ylabel('From...');
-
-subplot(1,2,2);
-imagesc(R2avg);
-
-for m = 1:nmods
-    for mm = 1:nmods
-        text(m, mm, sprintf('%1.2f', R2avg(mm,m)));
-    end
-end
-
-cbr = colorbar; cbr.LineWidth = 1; cbr.Label.String = 'max(R2)';
-colormap(flipud(autumn)); caxis([0,1]);
-
-axis('square'); 
-set(gca, 'XTick', 1:nmods, 'XTickLabel', models, ...
-         'YTick', 1:nmods, 'YTickLabel', models, ...
-         'XTickLabelRotation', 45, 'XAxisLocation', 'Top');
-xlabel('...to...'); ylabel('From...');
-
 %% PLOT THE GOODNESS OF FIT
 %  ========================
+
+% Choose which R2 to display
+R2 = R2generalized;
+%R2 = R2within;
 
 % Indices of models to look at
 perfidx = 1:3;
 leakidx = 7:9;
 
 % Average of R2 in specific models
-R2avg_AtoB{1} = R2avg(leakidx,leakidx); % leak to leak
-R2avg_AtoB{2} = R2avg(leakidx,perfidx); % leak to perfect
-R2avg_AtoB{3} = R2avg(perfidx,leakidx); % perfect to leak
-R2avg_AtoB{4} = R2avg(perfidx,perfidx); % perfect to perfect
+R2avg_AtoB{1} = mean(R2(leakidx,leakidx),3); % leak to leak
+R2avg_AtoB{2} = mean(R2(leakidx,perfidx),3); % leak to perfect
+R2avg_AtoB{3} = mean(R2(perfidx,leakidx),3); % perfect to leak
+R2avg_AtoB{4} = mean(R2(perfidx,perfidx),3); % perfect to perfect
 
 % Standard deviation of R2 in specific models
-R2std_AtoB{1} = R2std(leakidx,leakidx); % leak to leak
-R2std_AtoB{2} = R2std(leakidx,perfidx); % leak to perfect
-R2std_AtoB{3} = R2std(perfidx,leakidx); % perfect to leak
-R2std_AtoB{4} = R2std(perfidx,perfidx); % perfect to perfect
+R2std_AtoB{1} = std(R2(leakidx,leakidx),[],3); % leak to leak
+R2std_AtoB{2} = std(R2(leakidx,perfidx),[],3); % leak to perfect
+R2std_AtoB{3} = std(R2(perfidx,leakidx),[],3); % perfect to leak
+R2std_AtoB{4} = std(R2(perfidx,perfidx),[],3); % perfect to perfect
 
 % Average of best parameters in specific models
-BPavg_AtoB{1} = BPavg(leakidx,leakidx); % leak to leak
-BPavg_AtoB{2} = BPavg(leakidx,perfidx); % leak to perfect
-BPavg_AtoB{3} = BPavg(perfidx,leakidx); % perfect to leak
-BPavg_AtoB{4} = BPavg(perfidx,perfidx); % perfect to perfect
+BPavg_AtoB{1} = mean(bestp(leakidx,leakidx),3); % leak to leak
+BPavg_AtoB{2} = mean(bestp(leakidx,perfidx),3); % leak to perfect
+BPavg_AtoB{3} = mean(bestp(perfidx,leakidx),3); % perfect to leak
+BPavg_AtoB{4} = mean(bestp(perfidx,perfidx),3); % perfect to perfect
 
 % Standard deviation of best parameters in specific models
-BPstd_AtoB{1} = BPstd(leakidx,leakidx); % leak to leak
-BPstd_AtoB{2} = BPstd(leakidx,perfidx); % leak to perfect
-BPstd_AtoB{3} = BPstd(perfidx,leakidx); % perfect to leak
-BPstd_AtoB{4} = BPstd(perfidx,perfidx); % perfect to perfect
+BPstd_AtoB{1} = std(bestp(leakidx,leakidx),[],3); % leak to leak
+BPstd_AtoB{2} = std(bestp(leakidx,perfidx),[],3); % leak to perfect
+BPstd_AtoB{3} = std(bestp(perfidx,leakidx),[],3); % perfect to leak
+BPstd_AtoB{4} = std(bestp(perfidx,perfidx),[],3); % perfect to perfect
 
 from = {'leaky', 'leaky', 'perfect', 'perfect'};
 to   = {'leaky', 'perfect', 'leaky', 'perfect'};
