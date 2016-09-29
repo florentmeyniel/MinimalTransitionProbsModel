@@ -1,16 +1,46 @@
 % Script to plot the results of simulation of Huettel et al (2002) data.
-% 
+% This code is for the "dynamic belief models" (using HMM). The prior
+% volatility is not fitted, instead, we took the best-fitting value 
+% obtained with Squires et al data.
+%
 % Copyright 2016 Florent Meyniel & Maxime Maheu 
 
 % Clear the place
 clear; close('all');
 
-% Load data (select data to plot)
-% load Huettel2002_Simulation_Results
+% Load data
 load Huettel2002_SimulationHMM_Results
 
 figure(1); clf;
 set(gcf, 'Color', ones(1,3));
+
+% PLOT ORIGINAL DATA BY HUETTEL ET AL 2002
+load Huettel2002data.mat
+
+subplot(4,2,1);
+errorbar((1:8) - 0.1, rep_seq_viol_mean, rep_seq_viol_sem, '.-', 'Color', ...
+    [0 0 0],     'LineWidth', 2, 'MarkerSize', 25); 
+hold('on');
+errorbar((1:8) + 0.1, rep_seq_cont_mean, rep_seq_cont_sem, '.-', 'Color', ...
+    0.5*[1 1 1], 'LineWidth', 2, 'MarkerSize', 25);
+legend({'violation', 'continuation'}, 'Location', 'NorthWest');
+xlabel('streak length'); ylabel('RT (ms)'); title('REPETITIONS');
+ylim([350 550]); 
+set(gca, 'XTick', 1:8); box off
+xlim([0 8+1])
+
+subplot(4,2,2);
+errorbar((1:8) - 0.1, alt_seq_viol_mean, alt_seq_viol_sem, '.-', 'Color', ...
+    [0 0 0],     'LineWidth', 2, 'MarkerSize', 25); 
+hold('on');
+errorbar((1:8) + 0.1, alt_seq_cont_mean, alt_seq_cont_sem, '.-', 'Color', ...
+    0.5*[1 1 1], 'LineWidth', 2, 'MarkerSize', 25);
+legend({'violation', 'continuation'}, 'Location', 'NorthWest');
+xlabel('streak length'); ylabel('RT (ms)'); title('ALTERNATIONS');
+ylim([350 550]); 
+set(gca, 'XTick', 1:8); box off
+xlim([0 8+1])
+
 
 for iObs = 1:3
 
@@ -43,30 +73,3 @@ for iObs = 1:3
     set(gca, 'XTick', 1:8); box off
     xlim([0 maxrep+1])
 end
-
-% Plot original data by Huettel et al 2002.
-load Huettel2002data.mat
-
-subplot(4,2,1);
-errorbar((1:8) - 0.1, rep_seq_viol_mean, rep_seq_viol_sem, '.-', 'Color', ...
-    [0 0 0],     'LineWidth', 2, 'MarkerSize', 25); 
-hold('on');
-errorbar((1:8) + 0.1, rep_seq_cont_mean, rep_seq_cont_sem, '.-', 'Color', ...
-    0.5*[1 1 1], 'LineWidth', 2, 'MarkerSize', 25);
-legend({'violation', 'continuation'}, 'Location', 'NorthWest');
-xlabel('streak length'); ylabel('RT (ms)'); title('REPETITIONS');
-ylim([350 550]); 
-set(gca, 'XTick', 1:8); box off
-xlim([0 8+1])
-
-subplot(4,2,2);
-errorbar((1:8) - 0.1, alt_seq_viol_mean, alt_seq_viol_sem, '.-', 'Color', ...
-    [0 0 0],     'LineWidth', 2, 'MarkerSize', 25); 
-hold('on');
-errorbar((1:8) + 0.1, alt_seq_cont_mean, alt_seq_cont_sem, '.-', 'Color', ...
-    0.5*[1 1 1], 'LineWidth', 2, 'MarkerSize', 25);
-legend({'violation', 'continuation'}, 'Location', 'NorthWest');
-xlabel('streak length'); ylabel('RT (ms)'); title('ALTERNATIONS');
-ylim([350 550]); 
-set(gca, 'XTick', 1:8); box off
-xlim([0 8+1])
