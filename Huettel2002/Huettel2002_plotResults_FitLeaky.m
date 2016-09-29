@@ -5,12 +5,10 @@
 % Copyright 2016 Florent Meyniel & Maxime Maheu 
 
 % Clear the place
-clear; % close('all');
+clear; close('all');
 
-% Load data (select data to plot)
-% load Huettel2002_Simulation_Results
-% load Huettel2002_SimulationHMM_Results
-load('Huettel2002_Simulation_Results_2016-9-23_17-36-59_29387.mat')
+% Load data
+load('Huettel2002_Simulation_Results_FitLeaky.mat')
 
 
 % set the stage
