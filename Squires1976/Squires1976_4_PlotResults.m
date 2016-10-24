@@ -242,17 +242,17 @@ for i = 1:nIntg
     end
 end
 
-%% PLOT THE TREES
-%  ==============
+%% PLOT THE SCALED TREES
+%  =====================
 
-if     strcmpi(d, 'SquiresScience1976'), axlim = [3.5, 11, -0.5, 5.5];
-elseif strcmpi(d, 'KolossaFIHN2013'),    axlim = [3, 9, -0.5, 5.5]; end
+if     strcmpi(d, 'SquiresScience1976'), axlim = [3.5, 11.25, -0.5, 5.5];
+elseif strcmpi(d, 'KolossaFIHN2013'),    axlim = [3, 9.25, -0.5, 5.5]; end
 
 % Plot the "data trees" (i.e. the one we are trying to fit)
 figure('Units', 'Normalized', 'Position', [0.7, 0.52, 0.35, 0.55]); lgd = [];
 for p = 1:nP
     treepos = (nPat/2)*(p-1)+2;
-	lgd(p,:) = PlotTree2(Data(:,:,p), nPat, [1 1 1; 0 0 0], lw/2, treepos, 6, 0.08, col(p,:), lw);
+	lgd(p,:) = PlotTree2(Data(:,:,p), nPat, [1 1 1; 0 0 0], lw/2, treepos, 5, 0.08, col(p,:), lw);
 end
 set(gca, 'XTick', [], 'YTick', -0.5:0.5:5.5, 'YGrid', 'On', 'YMinorGrid', 'Off', 'Layer', 'Bottom');
 set(gca, 'LineWidth', lw, 'Box', 'Off');
@@ -262,20 +262,48 @@ legend(lgd, cellfun(@(x) sprintf('p(o) = %1.2f', x), num2cell(pX), ...
 ylabel({'P300 averaged amplitude', ''}, 'FontSize', fs);
 title(dataset, 'FontWeight', 'Bold', 'FontSize', fs);
 
+% Load lower level data
+lld = load(sprintf('Squires1976_FitModels_%s.mat', d)); %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Plot the theoretical trees (those with the best parameter fit)
 iter = 1;
 for s = [3,1,2]
-    for i = [1,2]
+    for i = [1,3]
         figure('Units', 'Normalized', 'Position', [0.7, 0.52, 0.35, 0.55]); iter = iter + 1;
+        
+        % Get betas
+        if strcmpi(Info.Intg{i}, 'Perfect'), it = 'Windowed';
+        else, it = Info.Intg{i}; end
+        midx = intersect(find(strcmpi(stat{s}, lld.Info.Models(:,1))), ...
+                         find(strcmpi(it,      lld.Info.Models(:,2))));
+        bp = find(lld.Spec.ParamGrid{midx} == Best.Param(i,s));
+        betas = lld.Fit.Beta{midx}(:,bp,1,1);
+        
+        % Plot the trees
+        yyaxis('right');
         for p = 1:nP
-            treepos = (nPat/2)*(p-1)+2;
-            lgd(p,:) = PlotTree2(Best.Simu{i,s}(:,:,p), nPat, [1 1 1; 0 0 0], lw/2, treepos, 6, 0.08, col(p,:), lw);
+            treepos = (nPat/2)*(p-1)+2;            
+            lgd(p,:) = PlotTree2(Best.Simu{i,s}(:,:,p), nPat, [1 1 1; 0 0 0], lw/2, treepos, 5, 0.08, col(p,:), lw);
         end
-        set(gca, 'XTick', [], 'YTick', -0.5:0.5:5.5, 'YGrid', 'On', 'YMinorGrid', 'Off', 'Layer', 'Bottom');
-        set(gca, 'LineWidth', lw, 'Box', 'Off');
+        
+        % Customize the plot
+        set(gca, 'XTick', [], 'YTick', -0.5:0.5:5.5, 'YGrid', 'On', 'YMinorGrid', 'Off', 'YColor', 'k');
+        set(gca, 'LineWidth', lw, 'Box', 'Off', 'Layer', 'Bottom');
         axis(axlim);
         ylabel({'Fitted surprise', ''}, 'FontSize', fs);
         title({sprintf('Learning %s with a %s memory', lower(Info.Stat{s}), ...
             lower(Info.Intg{i})), ''}, 'FontWeight', 'Bold', 'FontSize', fs);
+        
+        % Add information scale (in bits)
+        yax = get(gca, 'YTick');
+        yyaxis('left');
+        yaxlab = num2cell(((yax - betas(2)) / betas(1))');
+        yaxlab = cellfun(@(x) sprintf('%1.2f', x), yaxlab, 'UniformOutput', false);
+        set(gca, 'YTick', yax, 'YTickLabel', yaxlab, 'YColor', 'k');
+        ylim([yax(1), yax(end)]);
+        ylabel({'','Theoretial surprise (bits)'});
+        
+        %
+        save2pdf(sprintf('%i%i', s,i));
     end
 end

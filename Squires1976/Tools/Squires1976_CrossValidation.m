@@ -229,101 +229,124 @@ perfidx = 1:3;
 leakidx = 7:9;
 
 % Average of error in specific models
-Eavg_AtoB{1} = mean(abs(ID_epsilon(leakidx,leakidx,:)),3); % leak to leak
-Eavg_AtoB{2} = mean(abs(ID_epsilon(leakidx,perfidx,:)),3); % leak to perfect
-Eavg_AtoB{3} = mean(abs(ID_epsilon(perfidx,leakidx,:)),3); % perfect to leak
-Eavg_AtoB{4} = mean(abs(ID_epsilon(perfidx,perfidx,:)),3); % perfect to perfect
+Eavg_AtoB = {};
+Eavg_AtoB{1} = mean(abs(ID_epsilon(perfidx,leakidx,:)),3)'; % perfect to leak
+Eavg_AtoB{2} = mean(abs(ID_epsilon(perfidx,perfidx,:)),3)'; % perfect to perfect
+Eavg_AtoB{3} = mean(abs(ID_epsilon(leakidx,leakidx,:)),3)'; % leak to leak
+Eavg_AtoB{4} = mean(abs(ID_epsilon(leakidx,perfidx,:)),3)'; % leak to perfect
 
 % Standard deviation of error in specific models
-Estd_AtoB{1} = std(abs(ID_epsilon(leakidx,leakidx,:)),[],3); % leak to leak
-Estd_AtoB{2} = std(abs(ID_epsilon(leakidx,perfidx,:)),[],3); % leak to perfect
-Estd_AtoB{3} = std(abs(ID_epsilon(perfidx,leakidx,:)),[],3); % perfect to leak
-Estd_AtoB{4} = std(abs(ID_epsilon(perfidx,perfidx,:)),[],3); % perfect to perfect
+Estd_AtoB = {};
+Estd_AtoB{1} = std(abs(ID_epsilon(perfidx,leakidx,:)),[],3)'; % perfect to leak
+Estd_AtoB{2} = std(abs(ID_epsilon(perfidx,perfidx,:)),[],3)'; % perfect to perfect
+Estd_AtoB{3} = std(abs(ID_epsilon(leakidx,leakidx,:)),[],3)'; % leak to leak
+Estd_AtoB{4} = std(abs(ID_epsilon(leakidx,perfidx,:)),[],3)'; % leak to perfect
 
-% Useful variables for the plot
-from = {'leaky', 'leaky', 'perfect', 'perfect'};
-to   = {'leaky', 'perfect', 'leaky', 'perfect'};
-pos  = [-2/9, 0, 2/9];
-cols = lines(3);
-
-% Loop over pairs of integration types
-figure('Name', 'Identifiability', 'Position', [0.1859 0.1683 0.6286 0.6250]);
-for i = 1:4
-    subplot(2,2,i);
-
-    % Plot the bars
-    bar(1:numel(stat), Eavg_AtoB{i}, 1, 'LineWidth', 1); hold('on');
-
-    % Plot the error bars and the text labels
-    for m = 1:3
-        for mm = 1:3
-            M = Eavg_AtoB{i}(m,mm);
-            S = Estd_AtoB{i}(m,mm) ./ sqrt(n);
-            plot(repmat(m + pos(mm),1,2), [M-S, M+S], 'k-', 'LineWidth', 1);
-            text(m + pos(mm), 0.03, sprintf('%1.2f', M), 'Color', 'k');
+% Colors for the bars
+col = [ 0.0314    0.2706    0.5804 ; ...
+        0.6196    0.7922    0.8824 ; ...
+        0.6000         0    0.0510 ; ...
+        0.9882    0.5725    0.4471 ; ...
+             0    0.3529    0.1961 ; ...
+        0.6314    0.8510    0.6078 ];
+pos = linspace(-1/3, 1/3, 6);
+    
+% Figure specifications
+figure('Position', [0.0479 0.2892 0.9042 0.3833]);
+for j = [1,3]
+    if j == 1, subplot(1,2,2); else, subplot(1,2,1); end
+    
+    % Reorder information to make the plot easier to read
+    M = [Eavg_AtoB{j+1:-1:j}];
+    M = M(:,[1:3:6,2:3:6,3:3:6]);
+    S = [Estd_AtoB{j+1:-1:j}];
+    S = S(:,[1:3:6,2:3:6,3:3:6]) ./ sqrt(n);
+    
+    % Plot bars
+    b = bar(M, 1, 'LineWidth', 1); hold('on');
+    for i = 1:numel(b), set(b(i), 'FaceColor', col(i,:)); end
+    
+    % Plot error bars
+    for m = 1:size(M,1)
+        for mm = 1:size(M,2)
+            plot(repmat(m+pos(mm),1,2), [M(m,mm)-S(m,mm), M(m,mm)+S(m,mm)], 'k-', 'LineWidth', 1);
         end
-    end
-
+    end 
+    
     % Customize the plot
-    ylim([0,0.5]);
-    set(gca, 'XTick', 1:numel(stat), 'XTickLabel', stat, 'XTickLabelRotation', 0);
-    set(gca, 'Box', 'Off', 'LineWidth', 1, 'FontSize', 14);
-    lgd = legend(stat, 'Box', 'Off', 'Location', 'North', 'Orientation', 'Horizontal');
-    colormap(cols);
-
-    % Add labels
-    xlabel(sprintf('From %s ...', from{i}));
-    title(sprintf('... to %s ...', to{i}), 'FontWeight', 'Normal');
-    ylabel({'Absolute distance averaged', 'over simulations (+/- SEM)'});
+    set(gca, 'XTick', 1:numel(stat), 'XTickLabel', stat, ...
+        'LineWidth', 1,  'FontSize', 14, 'Box', 'Off');
+    ylim([0, ceil(max(max([Eavg_AtoB{:}]))*10)/10]);
+    
+    % Add labels to the plot
+    xlabel('Learned statistic by the simulated model');
+    ylabel('Absolute distance averaged over simulations (+/- SEM)');
+    title({sprintf('Recovery of simulations from %s integration observers', lower(intg{j})),''});
+    if j == 1, legend(b, repmat(stat', [2,1]), 'Box', 'Off'); end
 end
 
 %% PLOT THE RESULTS OF THE CROSS-VALIDATION ANALYSIS
 %  =================================================
 
+% t-tests
+pval = NaN(1,3);
+for i = 1:3
+    p = abs(CV_epsilon(perfidx(i),:));
+    l = abs(CV_epsilon(leakidx(i),:));
+    [~,pval(i)] = ttest(p,l);
+end
+
 % Average of error in specific models
+Eavg_AtoB = {};
 Eavg_AtoB{1} = mean(abs(CV_epsilon(perfidx,:)),2); % leak
 Eavg_AtoB{2} = mean(abs(CV_epsilon(leakidx,:)),2); % perfect
 
 % Standard deviation of error in specific models
+Estd_AtoB = {};
 Estd_AtoB{1} = std(abs(CV_epsilon(perfidx,:)),[],2); % leak
 Estd_AtoB{2} = std(abs(CV_epsilon(leakidx,:)),[],2); % perfect
 
 % Average of best parameters in specific models
+Pavg_AtoB = {};
 Pavg_AtoB{1} = mean(CV_bestpar(perfidx,:),2); % leak
 Pavg_AtoB{2} = mean(CV_bestpar(leakidx,:),2); % perfect
 
 % Standard deviation of best parameters in specific models
+Pstd_AtoB = {};
 Pstd_AtoB{1} = std(CV_bestpar(perfidx,:),[],2); % leak
 Pstd_AtoB{2} = std(CV_bestpar(leakidx,:),[],2); % perfect
 
 % Useful variables for the plot
 intgt = intg([1,3]);
+pos   = [-1/7, 1/7];
+cols  = [0.0314, 0.1882, 0.4196; 0.2588, 0.5725, 0.7765];
 
 % Loop over models
-figure('Name', 'Cross-validation', 'Position', [0.2698 0.2508 0.4609 0.4600]);
-for i = 1:2
-    subplot(1,2,i);
-    for m = 1:3
+figure('Name', 'Cross-validation', 'Position', [0.3557 0.2858 0.2885 0.3900]);
 
-        % Plot the bars
-        M = Eavg_AtoB{i}(m);
-        bar(m, abs(M), 'FaceColor', cols(m,:), 'LineWidth', 1); hold('on');
+% Plot the bars
+b = bar(cell2mat(Eavg_AtoB), 1, 'LineWidth', 1); hold('on');
+for i = 1:2, set(b(i), 'FaceColor', cols(i,:)); end
 
+for m = 1:3
+    for i = 1:2
+        
         % Plot the error bars
+        M = Eavg_AtoB{i}(m);
         S = Estd_AtoB{i}(m) ./ sqrt(n);
-        plot(repmat(m,1,2), [M-S, M+S], 'k-', 'LineWidth', 1);
+        plot(repmat(m+pos(i),1,2), [M-S, M+S], 'k-', 'LineWidth', 1);
 
         % Plot the best fitted parameters
-        text(m, 0.1, sprintf('%1.0f', Pavg_AtoB{i}(m)), 'Color', 'k');
-        text(m, 0.05, sprintf('(%.2f)', Pstd_AtoB{i}(m)), 'Color', 'k', 'FontAngle', 'Italic');
+        text(m+pos(i), 0.1, sprintf('%1.0f', Pavg_AtoB{i}(m)), 'Color', 'k');
+        text(m+pos(i), 0.05, sprintf('(%.2f)', Pstd_AtoB{i}(m)), 'Color', 'k', 'FontAngle', 'Italic');
     end
-
-    % Customize the plot
-    axis([0,4,0,1.2]);
-    set(gca, 'Box', 'Off', 'LineWidth', 1, 'FontSize', 14);
-
-    % Add labels
-    set(gca, 'XTick', 1:3, 'XTickLabel', stat);
-    title(sprintf('Models with a %s integration', lower(intgt{i})));
-    ylabel('Absolute distance averaged over simulations (+/- SEM)');
 end
+
+% Customize the plot
+set(gca, 'Box', 'Off', 'LineWidth', 1, 'FontSize', 14);
+
+% Add labels
+set(gca, 'XTick', 1:3, 'XTickLabel', stat);
+legend(cellfun(@(x) sprintf('%s integration', x), intg([1,3]), 'UniformOutput', 0), 'Box', 'Off');
+xlabel('Learned statistic'); ylabel('Absolute distance averaged over simulations (+/- SEM)');
+title('Cross-validation analysis');
