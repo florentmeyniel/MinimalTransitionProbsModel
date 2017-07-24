@@ -463,9 +463,14 @@ for k = 2:seqL
     % are Beta (or more generally Dirichlet) distributions.
     % cf e.g. http://bariskurt.com/kullback-leibler-divergence-between-two-dirichlet-and-beta-distributions
     % or https://en.wikipedia.org/wiki/Beta_distribution
-    KLdiv(k) = gammaln(sum(param_post)) - gammaln(sum(param_prior)) ...
-        - sum(gammaln(param_post)) + sum(gammaln(param_prior)) ...
-        + (param_post - param_prior) * (psi(param_post) - psi(sum(param_post)))';
+    try
+        KLdiv(k) = gammaln(sum(param_post)) - gammaln(sum(param_prior)) ...
+            - sum(gammaln(param_post)) + sum(gammaln(param_prior)) ...
+            + (param_post - param_prior) * (psi(param_post) - psi(sum(param_post)))';
+    catch
+        % for some special prior, the beta distribution is ill-defined.
+        KLdiv(k) = nan;
+    end
 end
 
 % Note that the first element in all_param is actually the prior. Therefore, 
