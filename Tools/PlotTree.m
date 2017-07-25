@@ -1,5 +1,5 @@
 function lgd = PlotTree( m, N, col, sd, n, stim, fs, lw, xoffset, letfun, gap )
-%PLOTTREE plots a matrix as a tree (with overlapping labels).
+%PLOTTREE plots a matrix as a tree (with overlapping text labels).
 %   - "m": a NxS matrix (where S = size(ff2n(N),1)/2) specifying the
 %   averaged likelihood value associated to each pattern. These are the
 %   values that will shape the tree. This is the only mandatory input
