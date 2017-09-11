@@ -55,6 +55,8 @@ function out = IdealObserver(in)
 %       no jump. If set to 0, the full posterior distributions are not
 %       return. They are if set to 1, but this requires some extra
 %       computations.
+%    in.opt. ReturnDistUpdate: if 1 (default), the distribution update is
+%       computed (time consumming). If 0, it is skipped.
 %    in.verbose: 1 to point flag when default values are used
 % 
 %   out: structure with the following fields as results.
@@ -82,16 +84,17 @@ function out = IdealObserver(in)
  
 % ASSIGN DEFAULT VALUES
 % =====================
-indefaults.mode             = 'HMM';            % prefer HMM over sampling to estimate jumps
-indefaults.opt.pgrid        = 0:0.01:1;         % estimation grid
-indefaults.opt.WhichPass    = 'Forward';        % only choice here
-indefaults.opt.priorp1g2    = [1 1];            % Bayes-Laplace prior
-indefaults.opt.priorp2g1    = [1 1];            % Bayes-Laplace prior
-indefaults.opt.priorp1      = [1 1];            % Bayes-Laplace prior
-indefaults.opt.method       = 'slow';           % compute for each observation
-indefaults.opt.MemParam     = [];               % perfect integration
-indefaults.opt.AboutFirst   = 'WithoutFirst';   % to have analytical solutions
-indefaults.opt.ReturnDist   = 0;                % do not return distribution when not already computed
+indefaults.mode                 = 'HMM';            % prefer HMM over sampling to estimate jumps
+indefaults.opt.pgrid            = 0:0.01:1;         % estimation grid
+indefaults.opt.WhichPass        = 'Forward';        % only choice here
+indefaults.opt.priorp1g2        = [1 1];            % Bayes-Laplace prior
+indefaults.opt.priorp2g1        = [1 1];            % Bayes-Laplace prior
+indefaults.opt.priorp1          = [1 1];            % Bayes-Laplace prior
+indefaults.opt.method           = 'slow';           % compute for each observation
+indefaults.opt.MemParam         = [];               % perfect integration
+indefaults.opt.AboutFirst       = 'WithoutFirst';   % to have analytical solutions
+indefaults.opt.ReturnDist       = 0;                % do not return distribution when not already computed
+indefaults.opt.ReturnDistUpdate = 1;                % compute distribution update
 
 % BASIS CHECKS ON INPUT
 % =====================
@@ -123,6 +126,7 @@ if      strcmpi(in.learned, 'transition') && in.jump == 1 && strcmpi(in.mode, 'H
     in = CheckInput(in, indefaults, 'pgrid');
     in = CheckInput(in, indefaults, 'Alpha0 transition');
     in = CheckInput(in, indefaults, 'WhichPass');
+    in = CheckInput(in, indefaults, 'ReturnDistUpdate');
     
     % RUN THE IDEAL OBSERVER
     % ~~~~~~~~~~~~~~~~~~~~~~
@@ -156,7 +160,11 @@ if      strcmpi(in.learned, 'transition') && in.jump == 1 && strcmpi(in.mode, 'H
     
     % get update of the posterior distribution (KL divergence)
     % NB: add the prior as 1st estimate.
-    out.distUpdate  = DistributionUpdateMarkov(cat(3, in.opt.Alpha0, rAlpha));
+    if in.opt.ReturnDistUpdate
+        out.distUpdate  = DistributionUpdateMarkov(cat(3, in.opt.Alpha0, rAlpha));
+    else
+        out.distUpdate  = [];
+    end
     
     
 elseif  strcmpi(in.learned, 'transition')  && in.jump == 1 && strcmpi(in.mode, 'sampling')
@@ -182,6 +190,7 @@ elseif  strcmpi(in.learned, 'transition') && in.jump == 0
     in = CheckInput(in, indefaults, 'MemParam');
     in = CheckInput(in, indefaults, 'AboutFirst');
     in = CheckInput(in, indefaults, 'ReturnDist');
+    in = CheckInput(in, indefaults, 'ReturnDistUpdate');
     if in.opt.ReturnDist == 0 && strcmpi(in.opt.AboutFirst, 'WithoutFirst')
         % in this case, pgrid is not used
         in.opt.pgrid = [];
@@ -237,9 +246,13 @@ elseif  strcmpi(in.learned, 'transition') && in.jump == 0
     % get update of the posterior distribution (KL divergence)
     % (here, we use analytical solution for independent Beta distributions)
     % NB: add the prior as 1st estimate.
-    out.distUpdate  = UpdateBetaJoint(...
-        cat(2, in.opt.priorp1g2', [p1g2_a; p1g2_b]), ...
-        cat(2, in.opt.priorp2g1', [p2g1_a; p2g1_b]));
+    if in.opt.ReturnDistUpdate
+        out.distUpdate  = UpdateBetaJoint(...
+            cat(2, in.opt.priorp1g2', [p1g2_a; p1g2_b]), ...
+            cat(2, in.opt.priorp2g1', [p2g1_a; p2g1_b]));
+    else
+        out.distUpdate  = [];
+    end
     
 elseif  strcmpi(in.learned, 'frequency')  && in.jump == 1 && strcmpi(in.mode, 'HMM')
     
@@ -255,6 +268,7 @@ elseif  strcmpi(in.learned, 'frequency')  && in.jump == 1 && strcmpi(in.mode, 'H
     in = CheckInput(in, indefaults, 'pgrid');
     in = CheckInput(in, indefaults, 'Alpha0 frequency');
     in = CheckInput(in, indefaults, 'WhichPass');
+    in = CheckInput(in, indefaults, 'ReturnDistUpdate');
     
     % RUN THE IDEAL OBSERVER
     % ~~~~~~~~~~~~~~~~~~~~~~
@@ -280,7 +294,11 @@ elseif  strcmpi(in.learned, 'frequency')  && in.jump == 1 && strcmpi(in.mode, 'H
     
     % get update of the posterior distribution (KL divergence)
     % NB: add the prior as 1s estimate.
-    out.distUpdate  = DistributionUpdateBernoulli(cat(2, in.opt.Alpha0, rAlpha));
+    if in.opt.ReturnDistUpdate
+        out.distUpdate  = DistributionUpdateBernoulli(cat(2, in.opt.Alpha0, rAlpha));
+    else
+        out.distUpdate  = [];
+    end
     
     
 elseif  strcmpi(in.learned, 'frequency')  && in.jump == 1 && strcmpi(in.mode, 'sampling')
@@ -304,6 +322,7 @@ elseif  strcmpi(in.learned, 'frequency')  && in.jump == 0
     in = CheckInput(in, indefaults, 'method');
     in = CheckInput(in, indefaults, 'MemParam');
     in = CheckInput(in, indefaults, 'ReturnDist');
+    in = CheckInput(in, indefaults, 'ReturnDistUpdate');
     if in.opt.ReturnDist == 1
         in = CheckInput(in, indefaults, 'pgrid');
     end
@@ -324,7 +343,11 @@ elseif  strcmpi(in.learned, 'frequency')  && in.jump == 0
     % get update of the posterior distribution (KL divergence)
     % (here, we use analytical solution for Beta distributions)
     % NB: add the prior as 1s estimate.
-    out.distUpdate  = UpdateBeta(cat(2, in.opt.priorp1', [p1_a; p1_b]));
+    if opt.ReturnDistUpdate
+        out.distUpdate  = UpdateBeta(cat(2, in.opt.priorp1', [p1_a; p1_b]));
+    else
+        out.distUpdate  = [];
+    end
     
     % Return full posterior distribution
     if in.opt.ReturnDist == 1
@@ -704,6 +727,12 @@ switch action
         if ~isfield(in.opt, 'ReturnDist')
             in.opt.ReturnDist = indefaults.opt.ReturnDist;
             if in.verbose; fprintf('\n use default for ''ReturnDist'''); end
+        end
+        
+    case 'ReturnDistUpdate'
+        if ~isfield(in.opt, 'ReturnDistUpdate')
+            in.opt.ReturnDistUpdate = indefaults.opt.ReturnDistUpdate;
+            if in.verbose; fprintf('\n use default for ''ReturnDistUpdate'''); end
         end
         
     case 'priorp1'
