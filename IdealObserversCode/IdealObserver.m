@@ -343,7 +343,7 @@ elseif  strcmpi(in.learned, 'frequency')  && in.jump == 0
     % get update of the posterior distribution (KL divergence)
     % (here, we use analytical solution for Beta distributions)
     % NB: add the prior as 1s estimate.
-    if opt.ReturnDistUpdate
+    if in.opt.ReturnDistUpdate
         out.distUpdate  = UpdateBeta(cat(2, in.opt.priorp1', [p1_a; p1_b]));
     else
         out.distUpdate  = [];
