@@ -77,9 +77,12 @@ for k = 1:seqL;
     % Specify likelihood of current observation
     LL = eye(n);
     if s(k) == 1
-        LL(logical(LL)) = pgrid;
-    else
-        LL(logical(LL)) = 1-pgrid;
+       LL(logical(LL)) = pgrid;
+    elseif s(k) == 2
+       LL(logical(LL)) = 1-pgrid;
+    elseif isnan(s(k))
+        % likelihood is flat in the absence of observation ('NaN')
+        LL(logical(LL)) = 1/n; 
     end
     
     % Compute the new alpha, based on the former alpha, the prior on
@@ -141,8 +144,11 @@ if strcmpi(Pass, 'Backward')
         LL = eye(n);
         if s(k) == 1
             LL(logical(LL)) = pgrid;
-        else
+        elseif s(k) == 2
             LL(logical(LL)) = 1-pgrid;
+        elseif isnan(s(k))
+            % likelihood is flat in the absence of observation ('NaN')
+            LL(logical(LL)) = 1/n;
         end
         
         if k == seqL

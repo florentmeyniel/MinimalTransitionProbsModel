@@ -601,9 +601,16 @@ switch action
             if ~isnumeric(in.s)
                 error('in.s should be numeric')
             else
-                if ~all(ismember(unique(in.s), [1 2]))
-                    error('in.s should contain only 1s and 2s')
-                else in.s = in.s(:)'; % force to a vector
+                if strcmpi(in.learned, 'frequency')  && in.jump == 1 && strcmpi(in.mode, 'HMM')
+                    if ~all(ismember(unique(in.s(~isnan(in.s))), [1 2]))
+                        error('in.s should contain only 1s, 2s or NaNs')
+                    else in.s = in.s(:)'; % force to a vector
+                    end
+                else
+                    if ~all(ismember(unique(in.s), [1 2]))
+                        error('in.s should contain only 1s and 2s')
+                    else in.s = in.s(:)'; % force to a vector
+                    end
                 end
             end
         end
