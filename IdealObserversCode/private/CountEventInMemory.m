@@ -56,19 +56,47 @@ else
 end
 
 if MemDecay < Inf
-    % Compute the decay factor
-    TrnDecay = exp(-(1/MemDecay)*(length(subs4trn)+1 - [1:length(subs4trn)]) );
-    SDecay   = exp(-(1/MemDecay)*(length(subs)    +1 - [1:length(subs)    ]) );
-    
-    % compute observed transition (with decay & memory span)
-    NBgA = sum( (trn(subs4trn==1)==1)  .* TrnDecay(subs4trn==1));
-    NAgB = sum( (trn(subs4trn==2)==-1) .* TrnDecay(subs4trn==2));
-    NAgA = sum( (trn(subs4trn==1)==0)  .* TrnDecay(subs4trn==1));
-    NBgB = sum( (trn(subs4trn==2)==0)  .* TrnDecay(subs4trn==2));
-    
-    % compute observed event count (with decay & memory span)
-    NA = sum(SDecay(subs==1));
-    NB = sum(SDecay(subs==2));
+    if nargout <=5
+        % the caller requests count about transitions
+        % for speed, compute only that
+        
+        % Compute the decay factor
+        TrnDecay = exp(-(1/MemDecay)*(length(subs4trn)+1 - [1:length(subs4trn)]) );
+        
+        % compute observed transition (with decay & memory span)
+        NBgA = sum( (trn(subs4trn==1)==1)  .* TrnDecay(subs4trn==1));
+        NAgB = sum( (trn(subs4trn==2)==-1) .* TrnDecay(subs4trn==2));
+        NAgA = sum( (trn(subs4trn==1)==0)  .* TrnDecay(subs4trn==1));
+        NBgB = sum( (trn(subs4trn==2)==0)  .* TrnDecay(subs4trn==2));
+        
+    elseif nargout == 2
+        % the caller requests count about stimuli
+        % for speed, compute only that
+        
+        % Compute the decay factor
+        SDecay   = exp(-(1/MemDecay)*(length(subs)    +1 - [1:length(subs)    ]) );
+        
+        % compute observed event count (with decay & memory span)
+        NA = sum(SDecay(subs==1));
+        NB = sum(SDecay(subs==2));
+        
+    else
+        % the call request everything
+        
+        % Compute the decay factor
+        TrnDecay = exp(-(1/MemDecay)*(length(subs4trn)+1 - [1:length(subs4trn)]) );
+        SDecay   = exp(-(1/MemDecay)*(length(subs)    +1 - [1:length(subs)    ]) );
+        
+        % compute observed transition (with decay & memory span)
+        NBgA = sum( (trn(subs4trn==1)==1)  .* TrnDecay(subs4trn==1));
+        NAgB = sum( (trn(subs4trn==2)==-1) .* TrnDecay(subs4trn==2));
+        NAgA = sum( (trn(subs4trn==1)==0)  .* TrnDecay(subs4trn==1));
+        NBgB = sum( (trn(subs4trn==2)==0)  .* TrnDecay(subs4trn==2));
+        
+        % compute observed event count (with decay & memory span)
+        NA = sum(SDecay(subs==1));
+        NB = sum(SDecay(subs==2));
+    end
     
 else
     % although the previous lines are correct whatever MemDecay, for speed
@@ -80,7 +108,7 @@ else
     NBgB = sum( trn(subs4trn==2)==0 );
     
     % compute only if asked
-    if nargout == 7
+    if nargout == 7 || nargout == 2
         NA = sum(subs==1);
         NB = sum(subs==2);
     end
