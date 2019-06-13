@@ -1,19 +1,33 @@
 function [MAP, m_h, s_h] = mar_ComputeMAPandPrediction(NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB)
 % Compute posterior MAP, mean and standard deviation, using the analytical formula for beta distributions.
-% 
+%
 % The advantage of using conjugate distribution is that posterior estimates
 % (mean, variance, MAP) have analytical solutions that depend purely on the
 % event counts NXgY (X given Y) augmented by the prior event counts pNygY.
-% 
-% Copyright 2016 Florent Meyniel & Maxime Maheu 
- 
-% USE ANALYTICAL SOLUTION
-MAP = [(NAgB+pNAgB)/(NAgB+pNAgB+NBgB+pNBgB); ...
-    (NBgA+pNBgA)/(NBgA+pNBgA+NAgA+pNAgA)];
-m_h = [(NAgB+pNAgB+1)/(NAgB+pNAgB+NBgB+pNBgB+2); ...
-    (NBgA+pNBgA+1)/(NBgA+pNBgA+NAgA+pNAgA+2)];
+%
+% Copyright 2016 Florent Meyniel & Maxime Maheu
 
-s_h = sqrt([(NAgB+pNAgB+1)*(NBgB+pNBgB+1) / ((NAgB+pNAgB+NBgB+pNBgB+2)^2*(NAgB+pNAgB+NBgB+pNBgB+3));...
-    (NBgA+pNBgA+1)*(NAgA+pNAgA+1) / ((NBgA+pNBgA+NAgA+pNAgA+2)^2*(NBgA+pNBgA+NAgA+pNAgA+3))]);
+% Beta parameters are equals to the event counts + 1.
+% We convert event counts into beta parameters:
+NAgA = NAgA + 1;
+NAgB = NAgB + 1;
+NBgA = NBgA + 1;
+NBgB = NBgB + 1;
+
+% The prior and the likelihood are both beta functions; their product is another
+% beta function, whose parameters are the sum of paramaters of each beta
+% distribution - 1
+% We thus compute the parameters of the posterior beta distributions as:
+NAgA = NAgA + pNAgA - 1;
+NAgB = NAgB + pNAgB - 1;
+NBgA = NBgA + pNBgA - 1;
+NBgB = NBgB + pNBgB - 1;
+
+% USE ANALYTICAL SOLUTION
+MAP = [(NAgB-1)/(NAgB+NBgB-2); (NBgA-1)/(NBgA+NAgA-2)];
+m_h = [NAgB/(NAgB+NBgB); NBgA/(NBgA+NAgA)];
+
+s_h = sqrt([m_h(1) * (1-m_h(1)) / (NAgB + NBgB + 1);...
+    m_h(2) * (1-m_h(2)) / (NBgA + NAgA + 1)]);
 
 end

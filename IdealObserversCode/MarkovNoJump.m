@@ -1,14 +1,14 @@
 function [varargout] = MarkovNoJump(s, t, priorpAgB, priorpBgA, method, MemParam, OutPut, AboutFirst)
-% Ideal Observer that estimates the hidden transition probabilities 
-% generating the observed outomes. 
+% Ideal Observer that estimates the hidden transition probabilities
+% generating the observed outomes.
 %
 % Usage:
 % [MAP, ...
-%     m_hat, ... 
-%     s_hat, ... 
-%     pmY, ...   
-%     predA, ...      
-%     predA_sd, ...   
+%     m_hat, ...
+%     s_hat, ...
+%     pmY, ...
+%     predA, ...
+%     predA_sd, ...
 %           ] = MarkovNoJump(s, t, priorpAgB, priorpBgA, method, MemParam, OutPut, AboutFirst)
 % Input:
 %   * s is the sequence (1: A; 2: B)
@@ -20,46 +20,45 @@ function [varargout] = MarkovNoJump(s, t, priorpAgB, priorpBgA, method, MemParam
 %   * param: cell with paired arguments (name, value)
 %       o the default is to use all events without decay
 %       o {'Limited', 10}: the memory window size is limited to 10 events
-%       o {'Decay', 2} an exponential decay exp(-1/2*n) is applied 
-%         to event n in the past. Note: the last even has n=1            % 
+%       o {'Decay', 2} an exponential decay exp(-1/2*n) is applied
+%         to event n in the past. Note: the last even has n=1            %
 %       o can be combined, e.g. {'Limited', 10, 'Decay, 2}
-%   * OutPut: the output the only what is specified by OupPut. OutPut is a 
-%       string (output variable name) or a cell of strings for multiple 
+%   * OutPut: the output the only what is specified by OupPut. OutPut is a
+%       string (output variable name) or a cell of strings for multiple
 %       outputs.
-%   * AboutFirst: 'WithoutFirst', to assume (unlike the default option) 
+%   * AboutFirst: 'WithoutFirst', to assume (unlike the default option)
 %     that the 1st event is drawn randomly. In that case, analytic
 %     posterior values can be computed.
 %
-% Ouput: 
-%   All output variables are time series (except in the 'quick' mode). 
-%   The k-th element in each output variable corresponds to the inferred 
-%   value given observations 1 to k s(1:k). When the output variable has 2 
+% Ouput:
+%   All output variables are time series (except in the 'quick' mode).
+%   The k-th element in each output variable corresponds to the inferred
+%   value given observations 1 to k s(1:k). When the output variable has 2
 %   elements (MAP, m_hat, s_hat) they corresponds respectively to A|B and B|A.
-% 
-%   * MAP: maximum a posteriori transition probabilities, 
+%
+%   * MAP: maximum a posteriori transition probabilities,
 %   * m_hat: mean posterior transition probability
 %   * s_hat: standard deviation of the posterior estimate
 %   * pmY: log model evidence (marginal likelihood of observations received so far)
 %   * predA: likelihood that the next observation is A, i.e. that s(k+1)=1
 %   * predA_sd: standard deviation of the estimated likelihood of the next event
 %
-% 
-% Copyright 2016 Florent Meyniel & Maxime Maheu 
- 
+%
+% Copyright 2016 Florent Meyniel & Maxime Maheu
+
 
 % PARSE INPUT
 % ===========
 % if no prior, use the Bayes-Laplace prior
 if nargin <= 3; priorpAgB = [1 1]; priorpBgA = [1 1]; end
 
-% Conjugate prior distributions are used for pAgB and pBgA. These 
-% distributions are Beta distributions; the parameters of a Beta 
-% distribution are equivalent to an event count -1.
-% Here, we convert the (Beta) prior into a event count.
-pNAgB = priorpAgB(1)-1;
-pNBgB = priorpAgB(2)-1;
-pNBgA = priorpBgA(1)-1;
-pNAgA = priorpBgA(2)-1;
+% A conjugate prior distribution is used for p(A|B) and p(B|A). 
+% This distribution is a Beta distributions.
+% We rename the beta parameters for brevity.
+pNAgB = priorpAgB(1);
+pNBgB = priorpAgB(2);
+pNBgA = priorpBgA(1);
+pNAgA = priorpBgA(2);
 
 % Choose computation mode (time series, or given the entire sequence).
 if nargin <= 4
@@ -79,8 +78,8 @@ else
 end
 
 % Control output parameters
-if nargin <= 6 
-    OutPut = []; 
+if nargin <= 6
+    OutPut = [];
 elseif ~exist('OutPut', 'var')
     error('check parameter indicating output')
 end
@@ -99,10 +98,10 @@ L  = length(s);
 % POSTERIOR INFERENCE
 % ===================
 if strcmp(method, 'slow')
-    
+
     % MAKE AN ESTIMATION FOR EACH OBSERVATION IN THE SEQUENCE OF
     % OBSERVATION
-    
+
     % Initialize variables
     MAP            = zeros(2, L);
     m_hat          = zeros(2, L);
@@ -110,30 +109,30 @@ if strcmp(method, 'slow')
     predA          = zeros(1,L);
     predA_sd       = zeros(1,L);
     pmY            = zeros(L, 1);
-    
+
     % FIRST OBSERVATION
-    % The posterior estimate on transition probabilities after having 
-    % observed the first event must be made before having received any 
-    % observation about any transition: it therefore corresponds to the 
-    % prior. 
+    % The posterior estimate on transition probabilities after having
+    % observed the first event must be made before having received any
+    % observation about any transition: it therefore corresponds to the
+    % prior.
     [MAP(:, 1), m_hat(:, 1), s_hat(:, 1)] = ComputeMAPandPrediction([], [], [], 'WithoutFirst', ...
         0, 0, 0, 0, pNBgA, pNAgB, pNAgA, pNBgB);
-    
+
     % prediction about the next observation
     if s(1) == 1
         predA(1)    = 1-m_hat(2,1); % = 1-p(B|A)
-        predA_sd(1) = s_hat(2,1);   
+        predA_sd(1) = s_hat(2,1);
     else
         predA(1)    = m_hat(1,1); % = p(A|B)
-        predA_sd(1) = s_hat(1,1);   
+        predA_sd(1) = s_hat(1,1);
     end
-    
+
     % SUBSEQUENT OBSERVATIONS
     for k = 2:L
-        
+
         % Count transitions including the current one
         [NBgA, NAgB, NAgA, NBgB, s1] = CountEventInMemory(s(1:k), MemParam);
-        
+
         % Likelihood of the 1st event
         if strcmpi(AboutFirst, 'WithoutFirst')
             % Assume that the first event followed an equiprobabable random
@@ -145,35 +144,35 @@ if strcmp(method, 'slow')
             % solutions.
             p1 = ComputeLikelihood1stEvent(MemDecay, s1, k, nt, t);
         end
-        
-        % Compute the full posterior distribution only when the analytical 
+
+        % Compute the full posterior distribution only when the analytical
         % solution is not available, i.e. only when the first event is
-        % assumed to be governed by transitin probabilities 
-        % (instead of being sampled equiprobabibly). 
+        % assumed to be governed by transitin probabilities
+        % (instead of being sampled equiprobabibly).
         if ~strcmpi(AboutFirst, 'WithoutFirst')
             post = ComputePosterior(p1, t, NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB);
         else
             post = [];
         end
-        
+
         % Compute MAP & predictions
         [MAP(:,k), m_hat(:,k), s_hat(:,k), predA(k), predA_sd(k)] ...
             = ComputeMAPandPrediction(post, s(1:k), t, AboutFirst, NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB);
-        
-        % Compute Log Model Evidence      
+
+        % Compute Log Model Evidence
         if nargout >=4 || any(strcmp(OutPut, 'pmY')) % compute only if necessary because it is time consuming
             pmY(k) = ComputeLME(p1, nt, t, AboutFirst, NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB);
         end
-        
+
     end
-    
+
 else
-    
+
     % MAKE AN ESTIMATION GIVEN ALL THE OBSERVED EVENTS
-    
+
     % Count transitions including the current one
     [NBgA, NAgB, NAgA, NBgB, s1] = CountEventInMemory(s, MemParam);
-    
+
     % Likelihood of the 1st event
     if strcmp(AboutFirst, 'WithoutFirst')
         % Assume that the first event followed an equiprobabable random
@@ -185,7 +184,7 @@ else
         % solutions.
         p1 = ComputeLikelihood1stEvent(MemDecay, s1, L, nt, t);
     end
-    
+
     % Compute the full posterior distribution only when the analytical
     % solution is not available, i.e. only when the first event is
     % assumed to be governed by transitin probabilities
@@ -195,11 +194,11 @@ else
     else
         post = [];
     end
-    
+
     % Compute MAP & predictions
     [MAP, m_hat, s_hat, predA, predA_sd] ...
         = ComputeMAPandPrediction(post, s, t, AboutFirst, NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB);
-    
+
     % Compute Log Model Evidence
     if nargout >=4 || any(strcmp(OutPut, 'pmY')) % compute only if necessary because it is time consuming
         pmY = ComputeLME(p1, nt, t, AboutFirst, NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB);
@@ -293,21 +292,21 @@ if strcmpi(AboutFirst, 'WithoutFirst')
     NBgA, NAgB, NAgA, NBgB, pNBgA, pNAgB, pNAgA, pNBgB);
 
 else    % USE ESTIMATION ON A GRID
-    
+
     % 4: compute MAP & variance
     % ~~~~~~~~~~~~~~~~~~~~~~~~~
     [~, indpAgB] = max(max(post, [], 1));
     [~, indpBgA] = max(max(post, [], 2));
-    
+
     MAP = t([indpAgB indpBgA]);
-    
+
     % compute the marginal probabilities
     mpAgB = nansum(post, 2);
     mpBgA = nansum(post, 1)';
-    
+
     m_h = [nansum(mpBgA.*t'); ...
         nansum(mpAgB.*t')];
-    
+
     s_h = sqrt([nansum(t'.^2.*mpBgA) - m_h(1)^2; ...
         nansum(t'.^2.*mpAgB) - m_h(2)^2]);
 end
@@ -342,34 +341,34 @@ function pmY = ComputeLME(p1, nt, t, AboutFirst, NBgA, NAgB, NAgA, NBgB, pNBgA, 
 
 if strcmpi(AboutFirst, 'WithoutFirst')
     % USE ANALYTICAL SOLUTION
-    
+
     t1 = [NAgB + pNAgB + 1, NBgB + pNBgB + 1];
     t2 = [NBgA + pNBgA + 1, NAgA + pNAgA + 1];
-    
+
     % log integral of a beta distribution with these parameters
     intBeta1 = sum(gammaln(t1)) - gammaln(sum(t1));
     intBeta2 = sum(gammaln(t2)) - gammaln(sum(t2));
-    
+
     % The likelihood is the product of the two integrals
     LL = intBeta1 + intBeta2;
-    
-    % add the LL of the first event    
+
+    % add the LL of the first event
     pmY = log(p1) + LL;
-    
+
 else
     % USE ESTIMATION ON A GRID
-    
+
     tmp1 = (betapdf(t, NAgA+1, NBgA+1)*beta(NAgA+1, NBgA+1))';
     tmp2 = (betapdf(t, NBgB+1, NAgB+1)*beta(NBgB+1, NAgB+1));
     LL = (p1 .* (tmp1 * tmp2));
-    
+
     Prior = (betapdf(t, pNAgA+1, pNBgA+1)*beta(pNAgA+1, pNBgA+1))' * ...
         (betapdf(t, pNBgB+1, pNAgB+1)*beta(pNBgB+1, pNAgB+1));
-    
+
     pmY = (1/(nt-1))^2*(nansum(nansum(LL .* Prior)));
-    
+
     % change to log scale
     pmY = log(pmY);
-    
+
 end
 end
